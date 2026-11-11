@@ -3,6 +3,8 @@
   config = {
     nixpkgs.hostPlatform = "x86_64-linux"; #CPU Architecture
 
+    system-manager.allowAnyDistro = true; #Allow more distro support. Need to test with CentOS
+
     # Enable and configure services
     services = {
       openssh.enable = true; #Replace distro ssh server with our ssh server
