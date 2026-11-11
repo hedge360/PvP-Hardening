@@ -1,16 +1,16 @@
 { config, lib, pkgs, ... }:
 {
   config = {
-    nixpkgs.hostPlatform = "x86_64-linux";
+    nixpkgs.hostPlatform = "x86_64-linux"; #CPU Architecture
 
     # Enable and configure services
     services = {
-      openssh.enable = true;
-      openssh.settings.PermitRootLogin = "no";
+      openssh.enable = true; #Replace distro ssh server with our ssh server
+      openssh.settings.PermitRootLogin = "no"; 
     };
 
     environment = {
-      systemPackages = with pkgs; [
+      systemPackages = with pkgs; [ #declare our own packages here rather than using official distro package manager
         nftables
         fail2ban
 	audit
@@ -19,39 +19,26 @@
 
       # Add directories and files to `/etc` and set their permissions
       etc = {
-        # with_ownership = {
-        #   text = ''
-        #     This is just a test!
-        #   '';
-        #   mode = "0755";
-        #   uid = 5;
-        #   gid = 6;
-        # };
-        #
-        # with_ownership2 = {
-        #   text = ''
-        #     This is just a test!
-        #   '';
-        #   mode = "0755";
-        #   user = "nobody";
-        #   group = "users";
-        # };
-
+	#Counter doas priv esc CVE
 	"sysctl.d/99-hardening.conf".text = ''
 	  dev.tty.legacy_tiocsti = 0
 	'';
 
-	"nftables.conf" = {
+	"nftables.conf" = { #Firewall rules. Edit as needed
+	  #NOTE: The following wrapped in double single quotes use the same syntax as you would see for /etc/nftables.conf. No need to convert syntax here
+	  #NOTE: THIS CONFIG ONLY ALLOWS SSH BY DEFAULT
 	  text = ''
 	    #!/usr/sbin/nft -f
 
 	    table inet myfilter
 	    delete table inet myfilter
+	    comment "reset tables"
 
 	    table inet myfilter {
 	      chain prerouting {
 	        type nat hook prerouting priority dstnat; policy accept;
 	        iifname != "lo" tcp dport 80 redirect to :8080
+		comment "Port forwarding 80 to 8080"
 	      }
 
 	      chain input {
@@ -77,14 +64,12 @@
 		  time-exceeded,
 		  parameter-problem
 	        } limit rate 10/second counter accept
+		comment "Allow ping traffic"
 
 	        tcp dport 22 ct state new limit rate 4/minute burst 5 packets \
 		  counter accept comment "normal SSH"
 		tcp dport 22 ct state new log prefix "SSH_FLOOD: " level warn \
 		  counter drop comment "SSH rate exceeded"
-
-	        tcp dport { 80, 443 } ct state new counter accept
-	        tcp dport 8080 ct state new counter accept
 
 	        limit rate 5/minute log prefix "NFT_DROP_IN: " level info
 	        counter drop comment "dropped inbound packets"
@@ -95,11 +80,6 @@
 
 	        ct state { established, related } accept
 	        ct state invalid drop
-
-	        iifname "docker0" accept
-		iifname "br-*" accept
-	        oifname "docker0" accept
-		oifname "br-*" accept
 
 	        counter drop
 	      }
@@ -125,7 +105,7 @@
       nftables = {
 	description = "nftables firewall";
 	wantedBy = [ "system-manager.target" ];
-	after = [ "network-pre.target" "docker.service" ];
+	after = [ "network-pre.target" "docker.service" ]; #remove docker.service as needed
 	before = [ "network.target" ];
 	serviceConfig = {
 	  Type = "oneshot";
@@ -140,7 +120,7 @@
 	restartTriggers = [ config.environment.etc."nftables.conf".text ];
       };
 
-      sysctl-hardening = {
+      sysctl-hardening = { #NOTE: Counters Critical CVE in doas
 	description = "Apply sysctl hardening";
 	wantedBy = [ "system-manager.target" ];
 	after = [ "systemd-sysctl.service" ];
