@@ -37,6 +37,16 @@
 	    comment "reset tables"
 
 	    table inet myfilter {
+	      set input_tcp_22 {
+		type ipv4_addr
+		comment "SSH sources allowed to bypass rate limit"
+	      }
+
+	      set input_tcp_8080 {
+		type ipv4_addr
+		comment "Direct HTTP backend sources"
+	      }
+
 	      chain prerouting {
 	        type nat hook prerouting priority dstnat; policy accept;
 	        iifname != "lo" tcp dport 80 redirect to :8080
@@ -45,12 +55,18 @@
 
 	      chain input {
 	        type filter hook input priority filter; policy drop;
+
 	        ct state established,related counter accept
 	        ct state invalid counter drop
+
+		ct status dnat ct original proto-dst 80 counter accept \
+		  comment "accept redirected HTTP"
 
 	        iif lo accept
 	        iif != lo ip daddr 127.0.0.1/8 counter drop comment "drop connections to lo not coming from lo"
 	        iif != lo ip6 daddr ::1/128 counter drop comment "review previous comment"
+
+		#restrict ipv6
 	        icmpv6 type {
 		  nd-neighbor-solicit,
 		  nd-router-advert,
@@ -66,12 +82,18 @@
 		  time-exceeded,
 		  parameter-problem
 	        } limit rate 10/second counter accept
-		comment "Allow ping traffic"
 
+		#Whitelisted ssh ips that bypass rate limit
+		ip saddr @input_tcp_22 tcp dport 22 ct state new counter accept
+
+		#rate limit for all other connections
 	        tcp dport 22 ct state new meter ssh_ratelimit { ip saddr limit rate 4/minute burst 5 packets } \
 		  counter accept comment "normal SSH per source"
 		tcp dport 22 ct state new log prefix "SSH_FLOOD: " level warn \
 		  counter drop comment "SSH rate exceeded per-source"
+
+		#Direct 8080 access from whitelisted IPs
+		ip saddr @input_tcp_8080 tcp dport 8080 ct state new counter accept
 
 	        limit rate 5/minute log prefix "NFT_DROP_IN: " level info
 	        counter drop comment "dropped inbound packets"
