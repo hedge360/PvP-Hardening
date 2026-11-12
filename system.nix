@@ -68,10 +68,10 @@
 	        } limit rate 10/second counter accept
 		comment "Allow ping traffic"
 
-	        tcp dport 22 ct state new limit rate 4/minute burst 5 packets \
-		  counter accept comment "normal SSH"
+	        tcp dport 22 ct state new meter ssh_ratelimit { ip saddr limit rate 4/minute burst 5 packets } \
+		  counter accept comment "normal SSH per source"
 		tcp dport 22 ct state new log prefix "SSH_FLOOD: " level warn \
-		  counter drop comment "SSH rate exceeded"
+		  counter drop comment "SSH rate exceeded per-source"
 
 	        limit rate 5/minute log prefix "NFT_DROP_IN: " level info
 	        counter drop comment "dropped inbound packets"
