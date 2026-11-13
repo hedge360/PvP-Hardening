@@ -109,7 +109,7 @@
 		  parameter-problem
 	        } accept
 
-	        ip protocol icmp type {
+	        ip protocol icmp icmp type {
 		  echo-request,
 		  destination-unreachable,
 		  time-exceeded,
