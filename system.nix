@@ -51,6 +51,7 @@
 	  [sshd]
 	  enabled = true
 	  mode = aggressive
+	  journalmatch = _COMM=sshd
 	'';
 
 	"fail2ban/fail2ban.local".text = ''
@@ -193,7 +194,7 @@
 	after = [ "network.target" "nftables.service" ];
 	wants = [ "nftables.service" ];
 	serviceConfig = {
-	  type = "simple";
+	  Type = "simple";
 	  ExecStart = "${pkgs.fail2ban}/bin/fail2ban-server -xf start";
 	  ExecStop = "${pkgs.fail2ban}/bin/fail2ban-client stop";
 	  ExecReload = "${pkgs.fail2ban}/bin/fail2ban-client reload";
