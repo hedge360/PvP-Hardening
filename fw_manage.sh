@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/run/system-manager/sw/bin/bash
 # fw_manage.sh — manage nftables dynamic whitelists
 set -uo pipefail
 

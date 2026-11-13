@@ -34,7 +34,6 @@
 
 	    table inet myfilter
 	    delete table inet myfilter
-	    comment "reset tables"
 
 	    table inet myfilter {
 	      set input_tcp_22 {
