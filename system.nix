@@ -72,11 +72,13 @@
 	    table inet myfilter {
 	      set input_tcp_22 {
 		type ipv4_addr
+		flags interval
 		comment "SSH sources allowed to bypass rate limit"
 	      }
 
 	      set input_tcp_8080 {
 		type ipv4_addr
+		flags interval
 		comment "Direct HTTP backend sources"
 	      }
 

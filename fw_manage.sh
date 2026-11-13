@@ -87,7 +87,7 @@ while true; do
     continue
   fi
 
-  if nft "$op" element $TABLE "$set_name" { "$ip" } 2>/dev/null; then
+  if nft "$op" element $TABLE "$set_name" "{ $ip }" 2>/dev/null; then
     echo "✅ $op '$ip' in @$set_name"
   else
     echo "⚠️  '$op' failed (entry may not exist for delete, or set is missing)."
