@@ -1,4 +1,5 @@
 { config, lib, pkgs, ... }:
+
 {
   config = {
     nixpkgs.hostPlatform = "x86_64-linux"; #CPU Architecture
@@ -8,7 +9,13 @@
     # Enable and configure services
     services = {
       openssh.enable = true; #Replace distro ssh server with our ssh server
-      openssh.settings.PermitRootLogin = "no"; 
+      openssh.settings = {
+	PermitRootLogin = "no";
+	PasswordAuthentication = true;
+	KbdInteractiveAuthentication = false;
+	MaxAuthTries = 3;
+	LoginGraceTime = 30;
+      };
     };
 
     environment = {
@@ -24,6 +31,32 @@
 	#Counter doas priv esc CVE
 	"sysctl.d/99-hardening.conf".text = ''
 	  dev.tty.legacy_tiocsti = 0
+	'';
+
+	"fail2ban/jail.local".text = ''
+	  [DEFAULT]
+	  #Use nftables for bans
+	  banaction = nftables-multiport
+	  banaction_allports = nftables-allports
+
+	  backend = systemd
+	  
+	  #IMPORTANT: Add YOUR admin ip here (use ip shown in the globalprotect interface)
+	  ignoreip = 127.0.0.1/8 ::1
+
+	  maxretry = 3
+	  findtime = 10m
+	  bantime = 1h
+
+	  [sshd]
+	  enabled = true
+	  mode = aggressive
+	'';
+
+	"fail2ban/fail2ban.local".text = ''
+	  [Definition]
+	  logtarget = SYSLOG
+	  socket = /run/fail2ban/fail2ban.sock
 	'';
 
 	"nftables.conf" = { #Firewall rules. Edit as needed
@@ -153,13 +186,28 @@
 	  RemainAfterExit = true;
 	};
       };
+
+      fail2ban = {
+	description = "Fail2ban Intrustion Prevention";
+	wantedBy = [ "multi-user.target" ];
+	after = [ "network.target" "nftables.service" ];
+	wants = [ "nftables.service" ];
+	serviceConfig = {
+	  type = "simple";
+	  ExecStart = "${pkgs.fail2ban}/bin/fail2ban-server -xf start";
+	  ExecStop = "${pkgs.fail2ban}/bin/fail2ban-client stop";
+	  ExecReload = "${pkgs.fail2ban}/bin/fail2ban-client reload";
+	  Restart = "on-failure";
+	  RestartSec = 5;
+	};
+      };
     };
 
     # Configure systemd tmpfile settings
     systemd.tmpfiles = {
-      # rules = [
-      #   "D /var/tmp/system-manager 0755 root root -"
-      # ];
+      rules = [
+        "d /var/lib/fail2ban 0755 root root -"
+      ];
       #
       # settings.sample = {
       #   "/var/tmp/sample".d = {
