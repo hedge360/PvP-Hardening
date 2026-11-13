@@ -82,8 +82,8 @@
 
 	      chain prerouting {
 	        type nat hook prerouting priority dstnat; policy accept;
-	        iifname != "lo" tcp dport 80 redirect to :8080
-		comment "Port forwarding 80 to 8080"
+	        iifname != "lo" tcp dport 80 redirect to :8080 \
+		  comment "Port forwarding 80 to 8080"
 	      }
 
 	      chain input {
@@ -109,7 +109,7 @@
 		  parameter-problem
 	        } accept
 
-	        ip protocol icmp icmp type {
+	        ip protocol icmp type {
 		  echo-request,
 		  destination-unreachable,
 		  time-exceeded,
@@ -138,13 +138,18 @@
 	        ct state { established, related } accept
 	        ct state invalid drop
 
+		iifname "docker*" accept
+		oifname "docker*" accept
+		iifname "br-*" accept
+		oifname "br-*" accept
+
 	        counter drop
 	      }
 
 	      chain output {
 	        type filter hook output priority filter; policy accept;
 
-	        tcp dport { 25, 445, 3389, 4444, 5555, 6667 } \
+	        tcp dport { 25, 445, 3389, 4444, 5555, 6667 } limit rate 5/minute \
 	      	  log prefix "NFT_EGRESS_SUSPECT: " level warn
 
 	        counter accept
@@ -192,7 +197,7 @@
 	description = "Fail2ban Intrustion Prevention";
 	wantedBy = [ "multi-user.target" ];
 	after = [ "network.target" "nftables.service" ];
-	wants = [ "nftables.service" ];
+	requires = [ "nftables.service" ];
 	serviceConfig = {
 	  Type = "simple";
 	  ExecStart = "${pkgs.fail2ban}/bin/fail2ban-server -xf start";
@@ -201,6 +206,10 @@
 	  Restart = "on-failure";
 	  RestartSec = 5;
 	};
+	restartTriggers = [
+	  config.environment.etc."fail2ban/jail.local".text
+	  config.environment.etc."fail2ban/fail2ban.local".text
+	];
       };
     };
 
@@ -208,6 +217,7 @@
     systemd.tmpfiles = {
       rules = [
         "d /var/lib/fail2ban 0755 root root -"
+	"d /run/fail2ban 0755 root root -"
       ];
       #
       # settings.sample = {
