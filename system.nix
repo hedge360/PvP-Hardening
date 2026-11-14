@@ -33,6 +33,12 @@
 	  dev.tty.legacy_tiocsti = 0
 	'';
 
+	"doas.conf".text = ''
+	  permit nopass keepenv root
+
+	  permit setenv { SSH_AUTH_SOCK TERMINFO TERMINFO_DIRS } :wheel
+	'';
+
 	"fail2ban/jail.local".text = ''
 	  [DEFAULT]
 	  #Use nftables for bans
