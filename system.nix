@@ -146,9 +146,9 @@
 	        ct state { established, related } accept
 	        ct state invalid drop
 
-		iifname != "docker*" iifname != "br-*" oifname { docker*", "br-*" } \
-		  ct originalproto-dst 8080 ct state new counter drop \
-		  comment "block redirect :8080 from outside"
+		iifname != { "docker*", "br-*" } oifname { "docker*", "br-*" } \
+		  ct original proto-dst 8080 ct state new counter drop \
+		  comment "block direct :8080 from outside"
 
 		iifname "docker*" accept
 		oifname "docker*" accept
