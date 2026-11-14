@@ -134,7 +134,7 @@
 		  counter drop comment "SSH rate exceeded per-source"
 
 		#Direct 8080 access from whitelisted IPs
-		#ip saddr @input_tcp_8080 tcp dport 8080 ct state new counter accept
+		ip saddr @input_tcp_8080 tcp dport 8080 ct state new counter accept
 
 	        limit rate 5/minute log prefix "NFT_DROP_IN: " level info
 	        counter drop comment "dropped inbound packets"
@@ -145,10 +145,6 @@
 
 	        ct state { established, related } accept
 	        ct state invalid drop
-
-		iifname != { "docker*", "br-*" } oifname { "docker*", "br-*" } \
-		  ct original proto-dst 8080 ct state new counter drop \
-		  comment "block direct :8080 from outside"
 
 		iifname "docker*" accept
 		oifname "docker*" accept
